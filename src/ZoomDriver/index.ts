@@ -12,7 +12,7 @@
 
 import type { AllyUserContract } from '@ioc:Adonis/Addons/Ally'
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
-import { Oauth2Driver, ApiRequest } from '@adonisjs/ally/build/standalone'
+import { Oauth2Driver, ApiRequest, RedirectRequest } from '@adonisjs/ally/build/standalone'
 
 /**
  * Define the access token object properties in this type. It
@@ -20,10 +20,10 @@ import { Oauth2Driver, ApiRequest } from '@adonisjs/ally/build/standalone'
  * more properties.
  *
  * ------------------------------------------------
- * Change "YourDriver" to something more relevant
+ * Change "ZoomDriver" to something more relevant
  * ------------------------------------------------
  */
-export type YourDriverAccessToken = {
+export type ZoomDriverAccessToken = {
   token: string
   type: 'bearer'
 }
@@ -33,21 +33,21 @@ export type YourDriverAccessToken = {
  * https://github.com/adonisjs/ally/blob/develop/adonis-typings/ally.ts#L236-L268
  *
  * ------------------------------------------------
- * Change "YourDriver" to something more relevant
+ * Change "ZoomDriver" to something more relevant
  * ------------------------------------------------
  */
-export type YourDriverScopes = string
+export type ZoomDriverScopes = string
 
 /**
  * Define the configuration options accepted by your driver. It must have the following
  * properties and you are free add more.
  *
  * ------------------------------------------------
- * Change "YourDriver" to something more relevant
+ * Change "ZoomDriver" to something more relevant
  * ------------------------------------------------
  */
-export type YourDriverConfig = {
-  driver: 'YourDriverName'
+export type ZoomDriverConfig = {
+  driver: 'zoom'
   clientId: string
   clientSecret: string
   callbackUrl: string
@@ -60,31 +60,31 @@ export type YourDriverConfig = {
  * Driver implementation. It is mostly configuration driven except the user calls
  *
  * ------------------------------------------------
- * Change "YourDriver" to something more relevant
+ * Change "ZoomDriver" to something more relevant
  * ------------------------------------------------
  */
-export class YourDriver extends Oauth2Driver<YourDriverAccessToken, YourDriverScopes> {
+export class ZoomDriver extends Oauth2Driver<ZoomDriverAccessToken, ZoomDriverScopes> {
   /**
    * The URL for the redirect request. The user will be redirected on this page
    * to authorize the request.
    *
    * Do not define query strings in this URL.
    */
-  protected authorizeUrl = ''
+  protected authorizeUrl = 'https://zoom.us/oauth/authorize'
 
   /**
    * The URL to hit to exchange the authorization code for the access token
    *
    * Do not define query strings in this URL.
    */
-  protected accessTokenUrl = ''
+  protected accessTokenUrl = 'https://zoom.us/oauth/token'
 
   /**
    * The URL to hit to get the user details
    *
    * Do not define query strings in this URL.
    */
-  protected userInfoUrl = ''
+  protected userInfoUrl = 'https://api.zoom.us/v2/users/me'
 
   /**
    * The param name for the authorization code. Read the documentation of your oauth
@@ -105,7 +105,7 @@ export class YourDriver extends Oauth2Driver<YourDriverAccessToken, YourDriverSc
    * approach is to prefix the oauth provider name to `oauth_state` value. For example:
    * For example: "facebook_oauth_state"
    */
-  protected stateCookieName = 'YourDriver_oauth_state'
+  protected stateCookieName = 'zoom_oauth_state'
 
   /**
    * Parameter name to be used for sending and receiving the state from.
@@ -125,7 +125,7 @@ export class YourDriver extends Oauth2Driver<YourDriverAccessToken, YourDriverSc
    */
   protected scopesSeparator = ' '
 
-  constructor(ctx: HttpContextContract, public config: YourDriverConfig) {
+  constructor(ctx: HttpContextContract, public config: ZoomDriverConfig) {
     super(ctx, config)
 
     /**
@@ -137,12 +137,16 @@ export class YourDriver extends Oauth2Driver<YourDriverAccessToken, YourDriverSc
     this.loadState()
   }
 
+  protected configureRedirectRequest(request: RedirectRequest<ZoomDriverScopes>) {
+    request.param('response_type', 'code')
+  }
+
   /**
    * Optionally configure the authorization redirect request. The actual request
    * is made by the base implementation of "Oauth2" driver and this is a
    * hook to pre-configure the request.
    */
-  // protected configureRedirectRequest(request: RedirectRequest<YourDriverScopes>) {}
+  // protected configureRedirectRequest(request: RedirectRequest<ZoomDriverScopes>) {}
 
   /**
    * Optionally configure the access token request. The actual request is made by
@@ -168,9 +172,12 @@ export class YourDriver extends Oauth2Driver<YourDriverAccessToken, YourDriverSc
    */
   public async user(
     callback?: (request: ApiRequest) => void
-  ): Promise<AllyUserContract<YourDriverAccessToken>> {
+  ): Promise<AllyUserContract<ZoomDriverAccessToken>> {
     const accessToken = await this.accessToken()
     const request = this.httpClient(this.config.userInfoUrl || this.userInfoUrl)
+    request.header('Authorization', `Bearer ${accessToken.token}`)
+    request.header('Accept', 'application/json')
+    request.parseAs('json')
 
     /**
      * Allow end user to configure the request. This should be called after your custom
@@ -183,6 +190,18 @@ export class YourDriver extends Oauth2Driver<YourDriverAccessToken, YourDriverSc
     /**
      * Write your implementation details here
      */
+
+    const body = await request.get()
+    return {
+      id: body.id,
+      avatarUrl: body.pic_url,
+      name: body.first_name + ' ' + body.last_name,
+      nickName: body.first_name + ' ' + body.last_name,
+      email: body.email,
+      emailVerificationState: body.verified === 0 ? 'unverified' : 'verified',
+      token: accessToken,
+      original: body,
+    }
   }
 
   public async userFromToken(
@@ -190,6 +209,9 @@ export class YourDriver extends Oauth2Driver<YourDriverAccessToken, YourDriverSc
     callback?: (request: ApiRequest) => void
   ): Promise<AllyUserContract<{ token: string; type: 'bearer' }>> {
     const request = this.httpClient(this.config.userInfoUrl || this.userInfoUrl)
+    request.header('Authorization', `Bearer ${accessToken}`)
+    request.header('Accept', 'application/json')
+    request.parseAs('json')
 
     /**
      * Allow end user to configure the request. This should be called after your custom
@@ -202,5 +224,16 @@ export class YourDriver extends Oauth2Driver<YourDriverAccessToken, YourDriverSc
     /**
      * Write your implementation details here
      */
+    const body = await request.get()
+    return {
+      id: body.id,
+      avatarUrl: body.pic_url,
+      name: body.first_name + ' ' + body.last_name,
+      nickName: body.first_name + ' ' + body.last_name,
+      email: body.email,
+      emailVerificationState: body.verified === 0 ? 'unverified' : 'verified',
+      original: body,
+      token: { token: accessToken, type: 'bearer' as const },
+    }
   }
 }

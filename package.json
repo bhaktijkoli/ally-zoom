@@ -1,7 +1,7 @@
 {
-  "name": "ally-custom-driver",
+  "name": "ally-zoom",
   "version": "0.0.0",
-  "description": "A boilerplate for a custom ally driver",
+  "description": "Zoom authentication provider for AdonisJS",
   "main": "build/providers/index.js",
   "files": [
     "build/src",
@@ -17,11 +17,13 @@
     "build": "npm run compile && npm run copyfiles",
     "prepublishOnly": "npm run build",
     "lint": "eslint . --ext=.ts",
+    "lint:fix": "eslint . --ext=.ts --fix",
     "format": "prettier --write .",
     "version": "npm run build"
   },
   "keywords": [
     "adonisjs",
+    "zoom",
     "adonis-ally"
   ],
   "author": "",
@@ -45,12 +47,12 @@
   "adonisjs": {
     "instructionsMd": "./build/instructions.md",
     "env": {
-      "YOUR_DRIVER_CLIENT_ID": "",
-      "YOUR_DRIVER_CLIENT_SECRET": ""
+      "ZOOM_CLIENT_ID": "",
+      "ZOOM_CLIENT_SECRET": ""
     },
-    "types": "ally-custom-driver",
+    "types": "ally-zoom",
     "providers": [
-      "ally-custom-driver"
+      "ally-zoom"
     ]
   }
 }
