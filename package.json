@@ -1,6 +1,6 @@
 {
   "name": "ally-zoom",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Zoom authentication provider for AdonisJS",
   "main": "build/providers/index.js",
   "files": [
